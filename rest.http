@@ -1,0 +1,17 @@
+GET http://localhost:3001/api/persons HTTP/1.1
+
+###
+
+POST http://localhost:3001/api/persons HTTP/1.1
+Content-Type: application/json
+
+{
+  "name": "Abhi K",
+  "number": "98-58-792322",
+  "id": "8"
+}
+
+### 
+
+DELETE http://localhost:3001/api/persons/8 HTTP/1.1
+
