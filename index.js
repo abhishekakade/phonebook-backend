@@ -1,9 +1,23 @@
 const express = require("express");
 const app = express();
+const morgan = require("morgan");
 
 let persons = require("./persons");
 
 app.use(express.json());
+
+// custom morgan token function to get request.body details
+morgan.token("request-details", function (req) {
+  return JSON.stringify(req.body);
+});
+
+// morgan logs date + time along with request method, URL, status code,
+// response time in ms and request.body details to the console
+app.use(
+  morgan(
+    ":date :remote-addr\n:method :url :status :response-time ms :request-details"
+  )
+);
 
 app.get("/", (request, response) => {
   response.send("<h1>Hello from Node + Express!</h1>");
