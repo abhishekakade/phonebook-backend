@@ -6,7 +6,7 @@ const cors = require("cors");
 let persons = require("./persons");
 
 app.use(express.json());
-
+app.use(express.static("build"));
 app.use(cors());
 
 // custom morgan token function to get request.body details
