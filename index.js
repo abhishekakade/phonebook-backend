@@ -1,9 +1,48 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const morgan = require("morgan");
 const cors = require("cors");
+const mongoose = require("mongoose");
+
+const Person = require("./models/person");
 
 let persons = require("./persons");
+const password = process.argv[2];
+// const url = `mongodb+srv://fso2020:${password}@fso20-cluster1.hcjbq.mongodb.net/phonebook?retryWrites=true&w=majority`;
+const url = process.env.MONGODB_URI;
+
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true });
+
+// Schema
+const personSchema = new mongoose.Schema({
+  name: String,
+  number: String,
+  id: String,
+});
+
+/* 
+The frontend assumes that every object has a unique `id` in the `id` field.
+We also don't want to return the mongo versioning field `__v` to the frontend.
+One way to format the objects returned by Mongoose is to modify the `toJSON` method of the schema.
+*/
+
+personSchema.set("toJSON", {
+  transform: (document, returnedObject) => {
+    returnedObject.id = returnedObject._id.toString();
+    delete returnedObject._id;
+    delete returnedObject.__v;
+  },
+});
+
+/* 
+Even though the `_id` property of Mongoose objects looks like a string, it is in fact an object. 
+The `toJSON` method we defined transforms it into a string just to be safe. 
+If we didn't make this change, it would cause more harm for us in the future once we start writing tests.
+*/
+
+// Model
+// const Person = mongoose.model("Person", personSchema);
 
 app.use(express.json());
 app.use(express.static("build"));
@@ -35,7 +74,9 @@ app.get("/info", (request, response) => {
 });
 
 app.get("/api/persons", (request, response) => {
-  response.json(persons);
+  Person.find({}).then((persons) => {
+    response.json(persons);
+  });
 });
 
 // new contact
@@ -48,6 +89,7 @@ app.post("/api/persons", (request, response) => {
 
   // person.id = String(maxId);
 
+  // if (body.content === undefined) {
   if (!body.name.trim() || !body.number.trim()) {
     return response.status(400).json({
       error: "Contact details cannot be empty!",
@@ -70,23 +112,41 @@ app.post("/api/persons", (request, response) => {
     console.log(body.name);
     return null;
   } else {
+    /*
+    // Previous code not needed but kept for reference 
     const idGen = Math.floor(Math.random() * 654867);
-    // persons = persons.concat(person);
-    // since I wanted to trim strings before saving
+    persons = persons.concat(person);
+    // since I wanted to trim strings before saving 
     persons = persons.concat({
       name: body.name.trim(),
       number: body.number.trim(),
       id: String(idGen),
     });
+
     console.log(persons);
     response.json(body);
+    */
+
+    const person = new Person({
+      name: body.name.trim(),
+      number: body.number.trim(),
+      date: new Date(),
+    });
+
+    person.save().then((savedContact) => {
+      response.json(savedContact);
+    });
   }
 });
 
 app.get("/api/persons/:id", (request, response) => {
-  const id = request.params.id;
-  const person = persons.find((person) => person.id === id);
-  response.json(person);
+  // const id = request.params.id;
+  // const person = persons.find((person) => person.id === id);
+  // response.json(person);
+
+  Person.findById(request.params.id).then((person) => {
+    response.json(person);
+  });
 });
 
 app.delete("/api/persons/:id", (request, response) => {
