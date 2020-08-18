@@ -8,6 +8,7 @@ const mongoose = require("mongoose");
 const Person = require("./models/person");
 
 let persons = require("./persons");
+const { response } = require("express");
 const password = process.argv[2];
 // const url = `mongodb+srv://fso2020:${password}@fso20-cluster1.hcjbq.mongodb.net/phonebook?retryWrites=true&w=majority`;
 const url = process.env.MONGODB_URI;
@@ -44,8 +45,8 @@ If we didn't make this change, it would cause more harm for us in the future onc
 // Model
 // const Person = mongoose.model("Person", personSchema);
 
-app.use(express.json());
 app.use(express.static("build"));
+app.use(express.json());
 app.use(cors());
 
 // custom morgan token function to get request.body details
@@ -139,22 +140,39 @@ app.post("/api/persons", (request, response) => {
   }
 });
 
-app.get("/api/persons/:id", (request, response) => {
+app.get("/api/persons/:id", (request, response, next) => {
   // const id = request.params.id;
   // const person = persons.find((person) => person.id === id);
   // response.json(person);
 
-  Person.findById(request.params.id).then((person) => {
-    response.json(person);
-  });
+  Person.findById(request.params.id)
+    .then((person) => {
+      if (person) {
+        response.json(person);
+        // error handling for unavailable user id
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch(
+      (error) => next(error)
+      // this old code will be moved to middleware for error handling
+      // console.error(error);
+      // response.status(400).send({ error: "malformed id" });
+    );
 });
 
 app.delete("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id);
-  persons = persons.filter((person) => person.id !== id);
-  // response.json(persons);
-  // response.status(204).json(persons).end();
-  response.status(204).json(persons);
+  // Old code kept for reference
+  // const id = Number(request.params.id);
+  // persons = persons.filter((person) => person.id !== id);
+  // response.status(204).json(persons);
+
+  Person.findByIdAndDelete(request.params.id)
+    .then((result) => {
+      response.status(204).end();
+    })
+    .catch((error) => next(error));
 });
 
 // const app = http.createServer((request, response) => {
@@ -162,7 +180,29 @@ app.delete("/api/persons/:id", (request, response) => {
 //   response.end(JSON.stringify(notes));
 // });
 
-const PORT = process.env.PORT || 3001;
+// Unknown Endpoint Handler Middleware
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint" });
+};
+
+// handler of requests with unknown endpoint
+app.use(unknownEndpoint);
+
+// Error Handler Middleware
+const errorHandler = (error, request, response, next) => {
+  console.error(error);
+
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "malformed id" });
+  }
+
+  next(error);
+};
+
+app.use(errorHandler);
+
+// const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on port: ${PORT}`);
 });
