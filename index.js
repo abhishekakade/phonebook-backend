@@ -8,7 +8,7 @@ const mongoose = require("mongoose");
 const Person = require("./models/person");
 
 let persons = require("./persons");
-const { response } = require("express");
+const { response, request } = require("express");
 const password = process.argv[2];
 // const url = `mongodb+srv://fso2020:${password}@fso20-cluster1.hcjbq.mongodb.net/phonebook?retryWrites=true&w=majority`;
 const url = process.env.MONGODB_URI;
@@ -160,6 +160,22 @@ app.get("/api/persons/:id", (request, response, next) => {
       // console.error(error);
       // response.status(400).send({ error: "malformed id" });
     );
+});
+
+// Edit contact
+app.patch("/api/persons/:id", (request, response) => {
+  const body = request.body;
+
+  const contact = {
+    name: body.name.trim(),
+    number: body.number.trim(),
+  };
+
+  Person.findByIdAndUpdate(request.params.id, contact, { new: true })
+    .then((updatedContact) => {
+      response.json(updatedContact);
+    })
+    .catch((error) => next(error));
 });
 
 app.delete("/api/persons/:id", (request, response) => {
