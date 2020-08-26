@@ -67,11 +67,15 @@ app.get("/", (request, response) => {
 });
 
 app.get("/info", (request, response) => {
-  response.send(
-    `<h1>Phonebook Info</h1><p>Phonebook has contact information of ${
-      persons.length
-    } people</p>${new Date()}<p></p>`
-  );
+  Person.count({}, function (err, result) {
+    if (err) {
+      console.error(err);
+    } else {
+      response.send(
+        `<h1>Phonebook Info</h1><p>Phonebook has contact information of ${result} people</p><p>${new Date()}</p>`
+      );
+    }
+  });
 });
 
 app.get("/api/persons", (request, response) => {
@@ -81,7 +85,7 @@ app.get("/api/persons", (request, response) => {
 });
 
 // new contact
-app.post("/api/persons", (request, response) => {
+app.post("/api/persons", (request, response, next) => {
   const body = request.body;
   // console.log("request body", person);
 
@@ -96,6 +100,9 @@ app.post("/api/persons", (request, response) => {
       error: "Contact details cannot be empty!",
     });
   } else if (
+    /* 
+  Check if contact already exists. 
+  */
     persons.find((p) => {
       if (p.name.toLowerCase().trim() === body.name.toLowerCase().trim()) {
         return response.status(400).json({
@@ -134,9 +141,12 @@ app.post("/api/persons", (request, response) => {
       date: new Date(),
     });
 
-    person.save().then((savedContact) => {
-      response.json(savedContact);
-    });
+    person
+      .save()
+      .then((savedContact) => {
+        response.json(savedContact);
+      })
+      .catch((error) => next(error));
   }
 });
 
@@ -163,7 +173,7 @@ app.get("/api/persons/:id", (request, response, next) => {
 });
 
 // Edit contact
-app.patch("/api/persons/:id", (request, response) => {
+app.patch("/api/persons/:id", (request, response, next) => {
   const body = request.body;
 
   const contact = {
@@ -178,7 +188,7 @@ app.patch("/api/persons/:id", (request, response) => {
     .catch((error) => next(error));
 });
 
-app.delete("/api/persons/:id", (request, response) => {
+app.delete("/api/persons/:id", (request, response, next) => {
   // Old code kept for reference
   // const id = Number(request.params.id);
   // persons = persons.filter((person) => person.id !== id);
